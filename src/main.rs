@@ -22,12 +22,31 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// does testing things
-    Test {
-        /// lists test values
+    /// Search Notes
+    Search {
+        /// Switch to Semantic Search
         #[arg(short, long)]
-        list: bool,
+        sem: bool,
+
+        /// Reindex the notes
+        #[arg(short, long)]
+        reindex: bool,
     },
+
+    /// Find a note by name
+    Find {},
+
+    /// Add a new note
+    New {},
+
+    /// Backlinks
+    Backlinks {},
+
+    /// Edit a note in Neovim
+    Edit {},
+
+    /// Open a note in VS Code
+    Open {},
 }
 
 fn main() {
@@ -54,13 +73,28 @@ fn main() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Some(Commands::Test { list }) => {
-            if *list {
-                println!("Printing testing lists...");
+        Some(Commands::Search { sem: s, reindex: r }) => {
+            if *s {
+                let sn = "Semantic Search";
+                if *r {
+                    println!("Reindexing the {sn}");
+                } else {
+                    println!("{sn}");
+                }
             } else {
-                println!("Not printing testing lists...");
+                let sn = "Tantivy Search";
+                if *r {
+                    println!("Reindexing the {sn}");
+                } else {
+                    println!("{sn}");
+                }
             }
         }
+        Some(Commands::Find {}) => println!("Finding..."),
+        Some(Commands::New {}) => println!("Adding..."),
+        Some(Commands::Backlinks {}) => println!("Backlinks..."),
+        Some(Commands::Edit {}) => println!("Editing..."),
+        Some(Commands::Open {}) => println!("Opening..."),
         None => {}
     }
 

@@ -7,14 +7,25 @@ use std::path::Path;
 // TODO just use fd?
 use walkdir::WalkDir;
 
-pub fn run(config: Config, verbose: bool, reindex: bool, query: &String) {
+pub fn run(config: Config, verbose: bool, reindex: bool, query: &String, init: bool) {
     let _ = verbose;
     let cache = get_cache(&config.note_taking_dir);
 
-    if reindex {
+    if init {
         // remove the cache directory
         let _ = std::fs::remove_dir_all(&cache);
-        todo!("Reindexing the cache");
+
+        // Re-initialize
+        create_tantivy(&cache);
+    }
+
+    if reindex {
+        // Re-index
+        index_tantivy(
+            std::path::Path::new(&cache),
+            std::path::Path::new(&config.note_taking_dir),
+            4,
+        );
     }
 
     //check if the cache exists

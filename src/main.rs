@@ -43,7 +43,17 @@ enum Commands {
     New {},
 
     /// Backlinks
-    Backlinks { file: PathBuf },
+    Backlinks {
+        file: PathBuf,
+
+        /// Print the backlinks in absolute paths rather than relative
+        #[arg(short, long)]
+        absolute: bool,
+
+        /// Notes are in a flat directory (faster printing)
+        #[arg(short, long)]
+        flat: bool,
+    },
 
     /// Edit a note in Neovim
     Edit {},
@@ -73,10 +83,10 @@ fn run() {
     // You can see how many times a particular flag or argument occurred
     // Note, only flags can have multiple occurrences
     match cli.debug {
-        0 => println!("Debug mode is off"),
-        1 => println!("Debug mode is kind of on"),
-        2 => println!("Debug mode is on"),
-        _ => println!("Don't be crazy"),
+        0 => {}
+        1 => {}
+        2 => {}
+        _ => {}
     }
 
     // You can check for the existence of subcommands, and if found use their
@@ -101,7 +111,11 @@ fn run() {
         }
         Some(Commands::Find {}) => println!("Finding..."),
         Some(Commands::New {}) => println!("Adding..."),
-        Some(Commands::Backlinks { file }) => backlinks::run(config, file, cli.debug > 0),
+        Some(Commands::Backlinks {
+            file,
+            absolute,
+            flat
+        }) => backlinks::run(config, file, *absolute, *flat, cli.debug > 0),
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}

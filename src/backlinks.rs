@@ -1,44 +1,55 @@
 use crate::config::Config;
-use regex;
 // import serde for derive magic
 use duct::cmd;
-use serde::{Deserialize, Serialize};
-use serde_json::Result;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-pub fn run(config: Config, file: &PathBuf, verbose: bool) {
+pub fn run(config: Config, file: &PathBuf, absolute: bool, flat: bool, verbose: bool) {
     // get the absolute path of the file
     let target = file
         .canonicalize()
         .unwrap_or_else(|_| panic!("Unable to get abs path of {:?}", file));
-    // For each directory we need to get the relative path of the file to search for
-    // Then use ripgrep to search for that file.
-    let dirs = get_dirs(Path::new(&config.note_taking_dir));
+
+    // Get the directories under the slipbox
+    // For each directory the backlinks will be relative
+    let notes_dir = Path::new(&config.note_taking_dir);
+    let dirs = get_dirs(notes_dir);
 
     let mut backlinks: Vec<String> = vec![];
-    for d in dirs {
-        // get the relative path from a file in this directory to this file
-        // relative path to target from d
+    if flat {
+        // Get the relative path
+        let relpath = relpath(notes_dir, &target);
 
-        let relpath = relpath(&Path::new(&d), &target);
-        println!(
-            "Under {:?}, the relpath to {:?} is:\n\t{:?}",
-            d, target, relpath
-        );
+        println!("{relpath}");
 
-        let backlinks_under_dir = grep(&Path::new(&d), &Path::new(&relpath));
-        println!("Backlinks for {:?}: {:#?}", target, backlinks_under_dir);
-        for backlink in backlinks_under_dir {
-            backlinks.push(backlink);
+        backlinks = grep(notes_dir, &Path::new(&relpath), verbose);
+    } else {
+        // Loop over the directories
+        for d in dirs {
+            // Get the relative path
+            let relpath = relpath(&Path::new(&d), &target);
+
+            // Using the relative path, Grep for the backlinks under this dir
+            for backlink in grep(&Path::new(&d), &Path::new(&relpath), verbose) {
+                backlinks.push(backlink);
+            }
         }
     }
 
+    // Print the backlinks (assuming they are relative to this dir)
     for b in backlinks {
-        let b = b.replace(&config.note_taking_dir, "");
-        println!("{b}");
+        if absolute {
+            println!("{b}");
+        } else {
+            let mut relpath = b.replace(&config.note_taking_dir, "");
+            // drop the leading slash
+            if relpath.starts_with("/") {
+                relpath = relpath[1..].to_string();
+            }
+            println!("{relpath}");
+        }
     }
 }
 
@@ -94,16 +105,15 @@ fn get_dirs(dir: &Path) -> Vec<String> {
     }
 }
 
-fn grep(dir: &Path, query: &Path) -> Vec<String> {
+fn grep(dir: &Path, query: &Path, verbose: bool) -> Vec<String> {
     // unfortunately grep returns 1 on no files found
     // so we'll have to treat failure as no files found
     match cmd!("rg", "-l", query, dir).read() {
         Ok(stdout) => stdout.lines().map(|x| x.to_string()).collect(),
         Err(_) => {
-            eprintln!(
-                "No files found (or error) for {:?}in directory {:?}",
-                query, dir
-            );
+            if verbose {
+                eprintln!("Non Zero Exit using rg on {:?}", dir);
+            }
             vec![]
         }
     }

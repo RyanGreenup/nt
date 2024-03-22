@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+mod backlinks;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -92,7 +94,7 @@ fn main() {
         }
         Some(Commands::Find {}) => println!("Finding..."),
         Some(Commands::New {}) => println!("Adding..."),
-        Some(Commands::Backlinks {}) => println!("Backlinks..."),
+        Some(Commands::Backlinks {}) => backlinks::run(),
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}

@@ -5,6 +5,7 @@ use utils::fzf_choose;
 
 mod backlinks;
 mod config;
+mod tantivy_search;
 
 use clap::{Parser, Subcommand};
 
@@ -34,6 +35,8 @@ struct Cli {
 enum Commands {
     /// Search Notes
     Search {
+        /// The search Query
+        query: String,
         /// Switch to Semantic Search
         #[arg(short, long)]
         sem: bool,
@@ -74,9 +77,10 @@ fn main() {
 }
 
 fn run() {
-    let config = config::Config::default();
-
     let cli = Cli::parse();
+
+    let config = config::Config::default();
+    let verbose = cli.debug > 0;
 
     // You can check the value provided by positional arguments, or option arguments
     if let Some(name) = cli.name.as_deref() {
@@ -99,7 +103,7 @@ fn run() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Some(Commands::Search { sem: s, reindex: r }) => {
+        Some(Commands::Search { sem: s, reindex: r, query }) => {
             if *s {
                 let sn = "Semantic Search";
                 if *r {
@@ -109,6 +113,7 @@ fn run() {
                 }
             } else {
                 let sn = "Tantivy Search";
+                tantivy_search::run(config, verbose, *r, query);
                 if *r {
                     println!("Reindexing the {sn}");
                 } else {

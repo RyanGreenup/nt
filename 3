@@ -38,7 +38,6 @@ impl NotesMap {
     }
 
     // TODO this should be multicore
-    // No, use mapping not iter?
     fn set_backlinks(&mut self) {
         for (_path_key, note_value) in self.notes.clone() {
             println!("Setting backlinks for {:?}", note_value.path);
@@ -51,13 +50,8 @@ impl NotesMap {
         for (path_key, note_value) in self.notes.clone() {
             let p = path_key;
             let b = note_value.backlinks.clone();
-            match b {
-                Some(backlinks) => {
-                    println!("{:?}\n\t{:?}", p, backlinks);
-                    println!("\n\n");
-                }
-                None => {}
-            }
+            println!("{:?}\n\t{:?}", p, b);
+            println!("\n\n");
         }
     }
 }

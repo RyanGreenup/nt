@@ -1,17 +1,14 @@
 use crate::config::Config;
 use duct::cmd;
 
-use serde_json;
 use std::collections::HashMap;
-use std::env;
 use std::ffi::OsStr;
 use std::path::Path;
 // TODO just use fd?
 use walkdir::WalkDir;
 
-use dirs;
-
 pub fn run(config: Config, verbose: bool, reindex: bool, query: &String) {
+    let _ = verbose;
     let cache = get_cache(&config.note_taking_dir);
 
     if reindex {
@@ -100,7 +97,6 @@ fn tantivy_search(query: &str, cache_dir: &str, n: u32) {
 ///     content: the content of the file
 /// Ensure that the Tantivy dictionary uses these same hardcoded fields
 fn make_jsonlines(dir_path: &Path, output_path: &Path) {
-    let home = env::var("HOME").unwrap_or_else(|_| panic!("HOME environment variable not set"));
 
     // Get all markdown files
     let md_files: Vec<_> = WalkDir::new(dir_path)

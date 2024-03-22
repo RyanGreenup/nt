@@ -10,17 +10,84 @@ use std::path::Path;
 use std::path::PathBuf;
 
 pub fn run(config: Config, file: &PathBuf, verbose: bool) {
+    // get the absolute path of the file
+    let target = file
+        .canonicalize()
+        .unwrap_or_else(|_| panic!("Unable to get abs path of {:?}", file));
     // For each directory we need to get the relative path of the file to search for
     // Then use ripgrep to search for that file.
     let dirs = get_dirs(Path::new(&config.note_taking_dir));
-    println!("{:?}", dirs);
+
+    let mut backlinks: Vec<String> = vec![];
+    for d in dirs {
+        // get the relative path from a file in this directory to this file
+        // relative path to target from d
+
+        let relpath = relpath(&Path::new(&d), &target);
+        println!(
+            "Under {:?}, the relpath to {:?} is:\n\t{:?}",
+            d, target, relpath
+        );
+
+        let backlinks_under_dir = grep(&Path::new(&d), &Path::new(&relpath));
+        println!("Backlinks for {:?}: {:#?}", target, backlinks_under_dir);
+        for backlink in backlinks_under_dir {
+            backlinks.push(backlink);
+        }
+    }
+
+    for b in backlinks {
+        let b = b.replace(&config.note_taking_dir, "");
+        println!("{b}");
+    }
+}
+
+/// Returns the relative path if possible
+/// If not possible returns the absolute path
+/// Input should be absolute path.
+fn relpath(dir: &Path, target: &Path) -> String {
+    if let Ok(dir) = dir.canonicalize() {
+        if let Ok(target) = target.canonicalize() {
+            let dir_components = dir.components().collect::<Vec<_>>();
+            let tgt_components = target.components().collect::<Vec<_>>();
+
+            let common_length = dir_components
+                .iter()
+                .zip(tgt_components.iter())
+                .take_while(|&(d, t)| d == t)
+                .count();
+
+            let mut relative_path = std::iter::repeat("..")
+                .take(dir_components.len() - common_length)
+                .collect::<Vec<_>>();
+
+            relative_path.extend(
+                tgt_components[common_length..]
+                    .iter()
+                    .map(|c| c.as_os_str().to_str().unwrap()),
+            );
+
+            return relative_path.join("/");
+        }
+
+        return dir
+            .to_str()
+            .unwrap_or_else(|| panic!("Unable to get string for directory {:?}", dir))
+            .to_string();
+    }
+    dir.to_str()
+        .unwrap_or_else(|| panic!("Unable to get string for directory {:?}", dir))
+        .to_string()
 }
 
 fn get_dirs(dir: &Path) -> Vec<String> {
     // unfortunately grep returns 1 on no files found
     // so we'll have to treat failure as no files found
     if let Ok(stduot) = cmd!("fd", "-t", "d", ".", dir).read() {
-        stduot.lines().map(|x| x.to_string()).collect()
+        let mut out: Vec<String> = stduot.lines().map(|x| x.to_string()).collect();
+        let dir = dir.canonicalize().expect("Unable to get abs path");
+        out.push(dir.to_str().unwrap().to_string());
+        out
     } else {
         eprintln!("Non Zero Exit using fd on {:?}", dir);
         vec![]
@@ -33,7 +100,10 @@ fn grep(dir: &Path, query: &Path) -> Vec<String> {
     match cmd!("rg", "-l", query, dir).read() {
         Ok(stdout) => stdout.lines().map(|x| x.to_string()).collect(),
         Err(_) => {
-            eprintln!("No files found (or error) for {:?}", query);
+            eprintln!(
+                "No files found (or error) for {:?}in directory {:?}",
+                query, dir
+            );
             vec![]
         }
     }

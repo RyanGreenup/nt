@@ -1,5 +1,8 @@
 use std::path::PathBuf;
 
+mod utils;
+use utils::fzf_choose;
+
 mod backlinks;
 mod config;
 
@@ -21,6 +24,10 @@ struct Cli {
 
     #[command(subcommand)]
     command: Option<Commands>,
+
+    /// Use FZF
+    #[arg(short, long)]
+    fzf: bool,
 }
 
 #[derive(Subcommand)]
@@ -44,7 +51,7 @@ enum Commands {
 
     /// Backlinks
     Backlinks {
-        file: PathBuf,
+        file: Option<PathBuf>,
 
         /// Print the backlinks in absolute paths rather than relative
         #[arg(short, long)]
@@ -115,7 +122,15 @@ fn run() {
             file,
             absolute,
             nested,
-        }) => backlinks::run(config, file, *absolute, *nested, cli.debug > 0),
+        }) => {
+            let mut file = file
+                .clone()
+                .unwrap_or_else(|| fzf_choose(config.note_taking_dir.as_str()));
+            if cli.fzf {
+                file = fzf_choose(config.note_taking_dir.as_str())
+            }
+            backlinks::run(config, &file, *absolute, *nested, cli.debug > 0)
+        }
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}
@@ -123,3 +138,4 @@ fn run() {
 
     // Continued program logic goes here...
 }
+

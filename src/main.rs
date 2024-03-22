@@ -123,13 +123,19 @@ fn run() {
             absolute,
             nested,
         }) => {
-            let mut file = file
-                .clone()
-                .unwrap_or_else(|| fzf_choose(config.note_taking_dir.as_str()));
+            let f: PathBuf;
             if cli.fzf {
-                file = fzf_choose(config.note_taking_dir.as_str())
+                f = match file {
+                    Some(_) => panic!("Cannot specify file with FZF"),
+                    None => fzf_choose(config.note_taking_dir.as_str()),
+                }
+            } else {
+                f = match file {
+                    Some(f) => f.clone(),
+                    None => fzf_choose(config.note_taking_dir.as_str()),
+                }
             }
-            backlinks::run(config, &file, *absolute, *nested, cli.debug > 0)
+            backlinks::run(config, &f, *absolute, *nested, cli.debug > 0)
         }
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
@@ -138,4 +144,3 @@ fn run() {
 
     // Continued program logic goes here...
 }
-

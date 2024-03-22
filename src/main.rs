@@ -50,9 +50,9 @@ enum Commands {
         #[arg(short, long)]
         absolute: bool,
 
-        /// Notes are in a flat directory (faster printing)
+        /// Specify Notes are in nested heirarchy (default assumes flat directory)
         #[arg(short, long)]
-        flat: bool,
+        nested: bool,
     },
 
     /// Edit a note in Neovim
@@ -114,8 +114,8 @@ fn run() {
         Some(Commands::Backlinks {
             file,
             absolute,
-            flat
-        }) => backlinks::run(config, file, *absolute, *flat, cli.debug > 0),
+            nested,
+        }) => backlinks::run(config, file, *absolute, *nested, cli.debug > 0),
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}

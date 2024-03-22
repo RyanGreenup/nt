@@ -1,22 +1,42 @@
 use crate::config::Config;
 use regex;
 // import serde for derive magic
+use duct::cmd;
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
-pub fn run(config: Config, verbose: bool) {
-    let note_taking_dir = config.note_taking_dir;
-    println!("Running backlinks ... {note_taking_dir}");
-    let mut note_taking_dir = std::path::PathBuf::from(note_taking_dir);
-    let mut map = walk(&mut note_taking_dir, verbose);
+pub fn run(config: Config, file: &PathBuf, verbose: bool) {
+    // For each directory we need to get the relative path of the file to search for
+    // Then use ripgrep to search for that file.
+    let dirs = get_dirs(Path::new(&config.note_taking_dir));
+    println!("{:?}", dirs);
+}
 
-    println!("Setting backlinks ...");
-    map.set_backlinks();
-    // map.printer();
-    map.debug_backlink_printer();
+fn get_dirs(dir: &Path) -> Vec<String> {
+    // unfortunately grep returns 1 on no files found
+    // so we'll have to treat failure as no files found
+    if let Ok(stduot) = cmd!("fd", "-t", "d", ".", dir).read() {
+        stduot.lines().map(|x| x.to_string()).collect()
+    } else {
+        eprintln!("Non Zero Exit using fd on {:?}", dir);
+        vec![]
+    }
+}
+
+fn grep(dir: &Path, query: &Path) -> Vec<String> {
+    // unfortunately grep returns 1 on no files found
+    // so we'll have to treat failure as no files found
+    match cmd!("rg", "-l", query, dir).read() {
+        Ok(stdout) => stdout.lines().map(|x| x.to_string()).collect(),
+        Err(_) => {
+            eprintln!("No files found (or error) for {:?}", query);
+            vec![]
+        }
+    }
 }
 
 struct NotesMap {
@@ -131,10 +151,15 @@ impl NotesMap {
     }
 }
 
-fn walk(filepath: &mut Path, verbose: bool) -> NotesMap {
-    let mut file_map = NotesMap::new();
-    walk_dir(filepath, &mut file_map, verbose);
-    for (path, _content) in &file_map.notes {
+fn get_dirs_native(parent_directory: &Path, verbose: bool) -> Vec<String> {
+    let dirs = walk(&parent_directory, verbose);
+    dirs.keys().map(|x| x.to_string()).collect()
+}
+
+fn walk(filepath: &Path, verbose: bool) -> HashMap<String, Vec<String>> {
+    let mut file_map = HashMap::new();
+    walk_dir_get_dirs(&filepath, &mut file_map, verbose);
+    for (path, _content) in &file_map {
         if verbose {
             println!("Path: {:?}", path);
         }
@@ -142,7 +167,7 @@ fn walk(filepath: &mut Path, verbose: bool) -> NotesMap {
     file_map
 }
 
-fn walk_dir(filepath: &Path, file_map: &mut NotesMap, verbose: bool) {
+fn walk_dir_get_dirs(filepath: &Path, file_map: &mut HashMap<String, Vec<String>>, verbose: bool) {
     if filepath.is_dir() {
         // ignore hidden directories
         if filepath
@@ -154,19 +179,31 @@ fn walk_dir(filepath: &Path, file_map: &mut NotesMap, verbose: bool) {
         {
             return;
         }
-        for entry in fs::read_dir(filepath).expect("Failed to read directory") {
-            let entry = entry.expect("Failed to read entry");
-            let path = entry.path();
-            walk_dir(&path, file_map, verbose);
+
+        if let Ok(entries) = fs::read_dir(filepath) {
+            for entry in entries {
+                if let Ok(e) = entry {
+                    let path = e.path();
+                    walk_dir_get_dirs(&path, file_map, verbose);
+                }
+            }
         }
     } else {
+        // In here filepath is known to be a file not a dir
+        // Try to get a string
         if let Some(path_str) = filepath.to_str() {
-            if let Ok(content) = std::fs::read_to_string(path_str) {
-                let path_str = filepath.to_str().expect("Failed to convert path to str");
-                file_map.add(path_str.to_owned(), content);
-            } else {
-                if verbose {
-                    eprintln!("Failed to read file: {:?}", filepath.display());
+            // Try to get parent dir of this file
+            if let Some(parent_dir) = filepath.parent() {
+                // Try to get that as a string
+                if let Some(parent_dir) = parent_dir.to_str() {
+                    // Store it in the map
+                    file_map
+                        // Try to get the vector out
+                        .entry(parent_dir.to_owned())
+                        // Otherwise add an empty vector
+                        .or_insert(vec![])
+                        // Push this string into that vector
+                        .push(path_str.to_owned());
                 }
             }
         }

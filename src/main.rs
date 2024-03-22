@@ -43,7 +43,7 @@ enum Commands {
     New {},
 
     /// Backlinks
-    Backlinks {},
+    Backlinks { file: PathBuf },
 
     /// Edit a note in Neovim
     Edit {},
@@ -101,7 +101,7 @@ fn run() {
         }
         Some(Commands::Find {}) => println!("Finding..."),
         Some(Commands::New {}) => println!("Adding..."),
-        Some(Commands::Backlinks {}) => backlinks::run(config, cli.debug > 0),
+        Some(Commands::Backlinks { file }) => backlinks::run(config, file, cli.debug > 0),
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}

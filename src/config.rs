@@ -13,7 +13,7 @@ impl Config {
     pub fn default() -> Config {
         let home = env::var("HOME").expect("HOME not set");
         Config {
-            note_taking_dir: format!("{home}/Notes/slipbox"),
+            note_taking_dir: format!("{home}"),
             vim_path: "/usr/bin/nvim".to_string(),
             vscode_path: "/usr/bin/codium".to_string(),
             default_editor: "vim".to_string(),

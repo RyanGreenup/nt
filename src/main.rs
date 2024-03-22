@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 mod backlinks;
+mod config;
 
 use clap::{Parser, Subcommand};
 
@@ -52,6 +53,8 @@ enum Commands {
 }
 
 fn main() {
+    let config = config::Config::default();
+
     let cli = Cli::parse();
 
     // You can check the value provided by positional arguments, or option arguments
@@ -94,7 +97,7 @@ fn main() {
         }
         Some(Commands::Find {}) => println!("Finding..."),
         Some(Commands::New {}) => println!("Adding..."),
-        Some(Commands::Backlinks {}) => backlinks::run(),
+        Some(Commands::Backlinks {}) => backlinks::run(config),
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}

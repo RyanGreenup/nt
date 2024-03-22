@@ -149,3 +149,31 @@ fn run() {
 
     // Continued program logic goes here...
 }
+
+
+
+/*
+   TODO Implement for Tantivy Search
+
+   */
+
+/*
+
+    function __tantivy_search
+        set index $HOME/Sync/Projects/2024/tantivy-search/slipbox_index
+        tantivy search -i $index --query "$argv" | jq '.path[]' | sort -u | tac | tr -d '"'
+    end
+    function __tantivy_skim
+        set notes_dir $argv
+        cd $notes_dir
+
+        sk -m -i -c '__tantivy_search {}'                           \
+            --bind pgup:preview-page-up,pgdn:preview-page-down      \
+            --preview "bat --style grid --color=always                  \
+                                --terminal-width 80 $notes_dir/{+}      \
+                                --italic-text=always                    \
+                                --decorations=always" | sed "s#^#$notes_dir/#"
+    end
+
+    __tantivy_search ~/Notes/slipbox
+   */

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 mod utils;
+use duct::cmd;
 use utils::fzf_choose;
 
 mod backlinks;
@@ -49,7 +50,6 @@ enum Commands {
         /// Initialize the index
         #[arg(short, long)]
         init: bool,
-
     },
 
     /// Find a note by name
@@ -109,7 +109,12 @@ fn run() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Some(Commands::Search { sem: s, reindex: r, query, init }) => {
+        Some(Commands::Search {
+            sem: s,
+            reindex: r,
+            query,
+            init,
+        }) => {
             if *s {
                 let sn = "Semantic Search";
                 if *r {
@@ -119,11 +124,40 @@ fn run() {
                 }
             } else {
                 let sn = "Tantivy Search";
-                tantivy_search::run(config, verbose, *r, query, *init);
-                if *r {
-                    println!("Reindexing the {sn}");
+                if cli.fzf {
+                    tantivy_search::run(config, verbose, *r, query, *init);
                 } else {
-                    println!("{sn}");
+                    /*
+
+                    sk -m -i -c tantivy search -i $index --query "$argv" | jq '.path[]' | sort -u | tac | tr -d '"'                                                    \
+                        --bind pgup:preview-page-up,pgdn:preview-page-down      \
+                        --preview "bat --style grid --color=always                  \
+                                            --terminal-width 80 $notes_dir/{+}      \
+                                            --italic-text=always                    \
+                                            --decorations=always" | sed "s#^#$notes_dir/#"
+                                   */
+                    // TODO this should support relative and absolute
+                    // let skim_command = r#"tantivy search -i /home/ryan/.cache/rust_nt/Notes/slipbox/slipbox --query '{}' | jq '.path[]' |  tr -d '"'"#;
+                    // TODO get the cache directory somehow
+                    // TODO move cache directory to config file probably (automation is the root of all evil)
+                    // get home directory
+                    let home = std::env::var("HOME").expect("HOME not set");
+                    let cache_dir = format!("{home}/.cache/rust_nt/Notes/slipbox/slipbox");
+                    let mut skim_command: String =
+                        format!("tantivy search -i {cache_dir} --query ").into();
+                    skim_command.push_str(r#"'{}' | jq '.path[]' |  tr -d '"'"#);
+
+                    cmd!(
+                        "sk",
+                        "-m",
+                        "-i",
+                        "-c",
+                        skim_command,
+                        "--preview",
+                        r#"bat --color=always {}"#
+                    )
+                    .run()
+                    .expect("Unable to run sk");
                 }
             }
         }
@@ -135,7 +169,7 @@ fn run() {
             nested,
         }) => {
             let f: PathBuf;
-            if cli.fzf {
+            if !cli.fzf {
                 f = match file {
                     Some(_) => panic!("Cannot specify file with FZF"),
                     None => fzf_choose(config.note_taking_dir.as_str()),
@@ -155,34 +189,6 @@ fn run() {
 
     // Continued program logic goes here...
 }
-
-
-
-/*
-   TODO Implement for Tantivy Search
-
-   */
-
-/*
-
-    function __tantivy_search
-        set index $HOME/Sync/Projects/2024/tantivy-search/slipbox_index
-        tantivy search -i $index --query "$argv" | jq '.path[]' | sort -u | tac | tr -d '"'
-    end
-    function __tantivy_skim
-        set notes_dir $argv
-        cd $notes_dir
-
-        sk -m -i -c '__tantivy_search {}'                           \
-            --bind pgup:preview-page-up,pgdn:preview-page-down      \
-            --preview "bat --style grid --color=always                  \
-                                --terminal-width 80 $notes_dir/{+}      \
-                                --italic-text=always                    \
-                                --decorations=always" | sed "s#^#$notes_dir/#"
-    end
-
-    __tantivy_search ~/Notes/slipbox
-   */
 
 // TODO
 // Search maybe should have optional query

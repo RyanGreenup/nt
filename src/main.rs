@@ -53,6 +53,10 @@ enum Commands {
 }
 
 fn main() {
+    run();
+}
+
+fn run() {
     let config = config::Config::default();
 
     let cli = Cli::parse();
@@ -97,7 +101,7 @@ fn main() {
         }
         Some(Commands::Find {}) => println!("Finding..."),
         Some(Commands::New {}) => println!("Adding..."),
-        Some(Commands::Backlinks {}) => backlinks::run(config),
+        Some(Commands::Backlinks {}) => backlinks::run(config, cli.debug > 0),
         Some(Commands::Edit {}) => println!("Editing..."),
         Some(Commands::Open {}) => println!("Opening..."),
         None => {}

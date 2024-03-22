@@ -32,8 +32,7 @@ pub fn run(config: Config, verbose: bool, reindex: bool, query: &String) {
         );
     }
 
-    tantivy_search(&query, &cache);
-    println!("Searching for: {}", query);
+    tantivy_search(&query, &cache, 15);
 }
 
 fn get_cache(notes_dir: &str) -> String {
@@ -84,15 +83,14 @@ fn index_tantivy(cache_dir: &Path, notes_dir: &Path, threads: u32) {
 }
 
 // TODO should probably deal with json in here
-fn tantivy_search(query: &str, cache_dir: &str) {
+fn tantivy_search(query: &str, cache_dir: &str, n: u32) {
     cmd!("tantivy", "search", "-i", cache_dir, "--query", query)
         .pipe(cmd!("jq", ".path[]"))
         .pipe(cmd!("tr", "-d", "\""))
         .pipe(cmd!("tac"))
+        .pipe(cmd!("tail", "-n", n.to_string()))
         .run()
         .expect("Unable to run tantivy-cli for the search");
-
-    println!("Searching for: {}", query);
 }
 
 // Create a jsonlines file

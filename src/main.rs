@@ -129,8 +129,12 @@ fn run() {
                         tantivy_search::run(config, verbose, *r, q, *init);
                         return;
                     }
+                } else {
+                    if let Some(_) = query {
+                        panic!("Cannot specify query with FZF");
+                    }
+                    utils::fzf_search();
                 }
-                utils::fzf_search();
             }
         }
         Some(Commands::Find {}) => println!("Finding..."),

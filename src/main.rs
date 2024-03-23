@@ -37,7 +37,7 @@ enum Commands {
     /// Search Notes
     Search {
         /// The search Query
-        query: String,
+        query: Option<String>,
 
         /// Switch to Semantic Search
         #[arg(short, long)]
@@ -123,42 +123,14 @@ fn run() {
                     println!("{sn}");
                 }
             } else {
-                let sn = "Tantivy Search";
-                if cli.fzf {
-                    tantivy_search::run(config, verbose, *r, query, *init);
-                } else {
-                    /*
-
-                    sk -m -i -c tantivy search -i $index --query "$argv" | jq '.path[]' | sort -u | tac | tr -d '"'                                                    \
-                        --bind pgup:preview-page-up,pgdn:preview-page-down      \
-                        --preview "bat --style grid --color=always                  \
-                                            --terminal-width 80 $notes_dir/{+}      \
-                                            --italic-text=always                    \
-                                            --decorations=always" | sed "s#^#$notes_dir/#"
-                                   */
-                    // TODO this should support relative and absolute
-                    // let skim_command = r#"tantivy search -i /home/ryan/.cache/rust_nt/Notes/slipbox/slipbox --query '{}' | jq '.path[]' |  tr -d '"'"#;
-                    // TODO get the cache directory somehow
-                    // TODO move cache directory to config file probably (automation is the root of all evil)
-                    // get home directory
-                    let home = std::env::var("HOME").expect("HOME not set");
-                    let cache_dir = format!("{home}/.cache/rust_nt/Notes/slipbox/slipbox");
-                    let mut skim_command: String =
-                        format!("tantivy search -i {cache_dir} --query ").into();
-                    skim_command.push_str(r#"'{}' | jq '.path[]' |  tr -d '"'"#);
-
-                    cmd!(
-                        "sk",
-                        "-m",
-                        "-i",
-                        "-c",
-                        skim_command,
-                        "--preview",
-                        r#"bat --color=always {}"#
-                    )
-                    .run()
-                    .expect("Unable to run sk");
+                // TODO Make this approach the same for backlinks
+                if !cli.fzf {
+                    if let Some(q) = query {
+                        tantivy_search::run(config, verbose, *r, q, *init);
+                        return;
+                    }
                 }
+                utils::fzf_search();
             }
         }
         Some(Commands::Find {}) => println!("Finding..."),
